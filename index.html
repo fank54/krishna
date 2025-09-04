@@ -1,49 +1,274 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
-  <meta charset="UTF-8">
-  <title>Kahana Chat</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f4f4f9; padding:20px; }
-    #chat-box { width: 100%; max-width: 600px; margin:auto; border:1px solid #ccc; border-radius:10px; padding:15px; background:white; }
-    .msg { margin:10px 0; padding:10px; border-radius:8px; }
-    .user { background:#d1e7dd; text-align:right; }
-    .ai { background:#e2e3e5; text-align:left; }
-    input { width:80%; padding:10px; }
-    button { padding:10px; margin-left:5px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kahana — Single File Demo (Gemini)</title>
+<style>
+  :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--accent:#2563eb}
+  body{margin:0;font-family:Inter,Segoe UI,Arial;background:linear-gradient(135deg,#071029,#0f172a);color:#e6eef8;display:flex;align-items:center;justify-content:center;height:100vh;padding:20px}
+  .wrap{width:100%;max-width:900px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:14px;box-shadow:0 8px 40px rgba(2,6,23,0.6);overflow:hidden;display:grid;grid-template-columns:1fr 360px}
+  .left{padding:18px;min-height:520px;display:flex;flex-direction:column;gap:12px}
+  header{display:flex;align-items:center;gap:12px}
+  header h1{margin:0;font-size:20px}
+  .chat{flex:1;background:#071226;border-radius:10px;padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.4}
+  .you{align-self:flex-end;background:linear-gradient(90deg,#2563eb,#1d4ed8);color:white;border-bottom-right-radius:4px}
+  .ai{align-self:flex-start;background:#0b1220;border:1px solid rgba(255,255,255,0.03);color:#dbeafe;border-bottom-left-radius:4px}
+  .controls{display:flex;gap:8px}
+  textarea#input{width:100%;min-height:78px;border-radius:10px;padding:12px;border:none;background:#081226;color:#e6eef8;resize:vertical}
+  button{background:var(--accent);border:none;color:white;padding:10px 14px;border-radius:10px;cursor:pointer}
+  .right{padding:18px;border-left:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent)}
+  label{font-size:13px;color:var(--muted)}
+  input[type=text], select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#e6eef8}
+  .small{font-size:13px;color:var(--muted)}
+  pre{background:#071226;padding:10px;border-radius:8px;overflow:auto;color:#cfe9ff;font-size:13px}
+  .hint{font-size:13px;color:#ffd580}
+  .danger{color:#ffb4b4;font-size:13px}
+</style>
 </head>
 <body>
-  <h2>🤖 Kahana (Gemini Free Model)</h2>
-  <div id="chat-box"></div>
-  <input type="text" id="user-input" placeholder="Type your message..." />
-  <button onclick="sendMessage()">Send</button>
 
-  <script>
-    async function sendMessage() {
-      const input = document.getElementById("user-input");
-      const chatBox = document.getElementById("chat-box");
-      const msg = input.value.trim();
-      if (!msg) return;
+<div class="wrap">
+  <div class="left">
+    <header>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><rect rx='8' width='36' height='36' fill='%232563eb'/><text x='50%' y='54%' fill='white' font-size='18' font-family='Arial' font-weight='600' text-anchor='middle'>K</text></svg>" alt="K" style="width:44px;height:44px;border-radius:8px"/>
+      <div>
+        <h1>Kahana — Single File Demo</h1>
+        <div class="small">Model: <span id="current-model">google/gemini-2.0-flash-exp:free</span></div>
+      </div>
+    </header>
 
-      // Show user msg
-      chatBox.innerHTML += `<div class="msg user">You: ${msg}</div>`;
-      input.value = "";
+    <div class="chat" id="chat">
+      <!-- messages go here -->
+      <div class="msg ai">Kahana ready. Type something and press Send ▶</div>
+    </div>
 
-      try {
-        const res = await fetch("http://localhost:5000/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg })
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="input" placeholder="Apna message yahan likho..."></textarea>
+      <div style="display:flex;flex-direction:column">
+        <button id="sendBtn">➤</button>
+        <button id="clearBtn" style="margin-top:8px;background:#334155">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="right">
+    <div>
+      <label>OpenRouter API Key (paste karo)</label>
+      <input type="text" id="apiKey" placeholder="sk-or-..." />
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <label style="flex:1"><input type="checkbox" id="storeKey" /> Store across sessions (localStorage)</label>
+      </div>
+      <div class="small" style="margin-top:8px">Warning: <span class="danger">API key browser me dalne se publicly visible ho sakta hai</span>. Public repo me commit mat karo.</div>
+    </div>
+
+    <div>
+      <label>Model</label>
+      <select id="modelSelect">
+        <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp:free</option>
+        <option value="openai/gpt-4">openai/gpt-4</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Mode</label>
+      <select id="modeSelect">
+        <option value="direct">Direct (front→OpenRouter)</option>
+        <option value="proxy">Use Proxy (recommended if CORS)</option>
+      </select>
+      <div class="small" style="margin-top:6px">If proxy: enter proxy URL below (example: http://localhost:5000/chat)</div>
+      <input type="text" id="proxyUrl" placeholder="http://localhost:5000/chat" />
+    </div>
+
+    <div>
+      <label>Response / Debug</label>
+      <pre id="debug" style="height:180px">No activity yet.</pre>
+    </div>
+
+    <div class="hint">Tip: Agar "CORS" error aaye to use proxy mode and run the Node proxy (instructions shown when error occurs).</div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const apiKeyEl = document.getElementById('apiKey');
+  const storeKeyEl = document.getElementById('storeKey');
+  const debug = document.getElementById('debug');
+  const modeSelect = document.getElementById('modeSelect');
+  const proxyUrlEl = document.getElementById('proxyUrl');
+  const modelSelect = document.getElementById('modelSelect');
+
+  // restore saved key if user wanted
+  if(localStorage.getItem('kahana_api_key')) {
+    apiKeyEl.value = localStorage.getItem('kahana_api_key');
+    storeKeyEl.checked = true;
+  }
+
+  storeKeyEl.addEventListener('change', ()=> {
+    if(!storeKeyEl.checked) {
+      localStorage.removeItem('kahana_api_key');
+    }
+  });
+
+  modelSelect.addEventListener('change', ()=> {
+    document.getElementById('current-model').textContent = modelSelect.value;
+  });
+
+  function addMessage(text, who) {
+    const d = document.createElement('div');
+    d.className = 'msg ' + (who === 'you' ? 'you' : 'ai');
+    d.textContent = text;
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  clearBtn.addEventListener('click', ()=> {
+    chat.innerHTML = '<div class="msg ai">Kahana ready. Type something and press Send ▶</div>';
+  });
+
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keypress', (e)=> {
+    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  async function send() {
+    const txt = input.value.trim();
+    if(!txt) return;
+    addMessage(txt, 'you');
+    input.value = '';
+
+    const key = apiKeyEl.value.trim();
+    if(!key) {
+      addMessage('⚠️ Please paste your OpenRouter API key in the right panel.', 'ai');
+      return;
+    }
+    if(storeKeyEl.checked) localStorage.setItem('kahana_api_key', key);
+
+    const model = modelSelect.value;
+    const mode = modeSelect.value;
+    const payload = {
+      model,
+      messages: [
+        { role: 'system', content: 'You are Kahana, a helpful assistant.' },
+        { role: 'user', content: txt }
+      ],
+      temperature: 0.7,
+      max_tokens: 512
+    };
+
+    debug.textContent = 'Calling API...';
+
+    try {
+      let respJson;
+
+      if(mode === 'proxy') {
+        // Use proxy URL (backend must accept same body and forward to OpenRouter)
+        const proxyUrl = proxyUrlEl.value.trim();
+        if(!proxyUrl) { addMessage('⚠️ Proxy URL required in proxy mode.', 'ai'); return; }
+
+        const r = await fetch(proxyUrl, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ message: txt, model })
         });
-        const data = await res.json();
-        chatBox.innerHTML += `<div class="msg ai">Kahana: ${data.reply}</div>`;
-      } catch (err) {
-        chatBox.innerHTML += `<div class="msg ai">⚠️ Error contacting server.</div>`;
+        if(!r.ok) throw new Error('Proxy returned ' + r.status);
+        respJson = await r.json();
+        // Proxy expected to return { reply: "...", raw: {...} } OR forward OpenRouter raw
+        const reply = respJson.reply ?? (respJson?.choices?.[0]?.message?.content) ?? JSON.stringify(respJson).slice(0,1000);
+        addMessage(reply, 'ai');
+        debug.textContent = JSON.stringify(respJson, null, 2).slice(0, 4000);
+
+      } else {
+        // Direct call to OpenRouter from browser (may be blocked by CORS)
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + key,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if(!r.ok) {
+          const txtErr = await r.text();
+          throw new Error('OpenRouter responded '+r.status+': '+txtErr.slice(0,800));
+        }
+        respJson = await r.json();
+        const reply = respJson?.choices?.[0]?.message?.content ?? 'No response text';
+        addMessage(reply, 'ai');
+        debug.textContent = JSON.stringify(respJson, null, 2).slice(0, 4000);
       }
 
-      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (err) {
+      console.error(err);
+      const message = String(err.message || err);
+      addMessage('⚠️ Error contacting server: ' + message, 'ai');
+      debug.textContent = 'Error: ' + message + '\n\nIf this mentions CORS or network issues, run the local proxy (see instructions below).';
+
+      // Help text: show simple Node proxy code for local use
+      const help = `\n\n=== Local Node proxy (save as server.js) ===
+
+/*
+Simple Express proxy that forwards to OpenRouter.
+Run:
+  npm init -y
+  npm i express node-fetch cors
+  node server.js
+
+Then set proxy mode in the UI to: http://localhost:5000/chat
+*/
+import express from "express";
+import fetch from "node-fetch";
+import cors from "cors";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const OPENROUTER_API_KEY = "PASTE_YOUR_OPENROUTER_KEY_HERE";
+
+app.post("/chat", async (req, res) => {
+  try {
+    const userMessage = req.body.message || req.body.messages?.[1]?.content || "Hello";
+    const model = req.body.model || "google/gemini-2.0-flash-exp:free";
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "You are Kahana, a helpful assistant." },
+          { role: "user", content: userMessage }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    // send back reply and full raw
+    res.json({ reply: data?.choices?.[0]?.message?.content ?? null, raw: data });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.listen(5000, ()=> console.log("Proxy running on http://localhost:5000"));
+`;
+      // append to debug area
+      debug.textContent += help;
     }
-  </script>
+  }
+})();
+</script>
+
 </body>
 </html>
